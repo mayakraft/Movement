@@ -96,11 +96,17 @@
         if(motionManager.isDeviceMotionAvailable){
             [motionManager startDeviceMotionUpdatesToQueue:[NSOperationQueue currentQueue] withHandler: ^(CMDeviceMotion *deviceMotion, NSError *error){
                 CMRotationMatrix a = deviceMotion.attitude.rotationMatrix;
-                _attitudeVelocity =
+                GLKMatrix4 aV =
                 GLKMatrix4Make(a.m11-_attitudeMatrix.m00, a.m21-_attitudeMatrix.m01, a.m31-_attitudeMatrix.m02, 0.0f,
                                a.m13-_attitudeMatrix.m10, a.m23-_attitudeMatrix.m11, a.m33-_attitudeMatrix.m12, 0.0f,
                                -a.m12-_attitudeMatrix.m20,-a.m22-_attitudeMatrix.m21,-a.m32-_attitudeMatrix.m22,0.0f,
                                0.0f , 0.0f , 0.0f , 1.0f);
+                _attitudeAcceleration =
+                GLKMatrix4Make(aV.m00-_attitudeVelocity.m00, aV.m01-_attitudeVelocity.m01, aV.m02-_attitudeVelocity.m02, 0.0f,
+                               aV.m10-_attitudeVelocity.m10, aV.m11-_attitudeVelocity.m11, aV.m12-_attitudeVelocity.m12, 0.0f,
+                               aV.m20-_attitudeVelocity.m20, aV.m21-_attitudeVelocity.m21, aV.m22-_attitudeVelocity.m22, 0.0f,
+                               0.0f , 0.0f , 0.0f , 1.0f);
+                _attitudeVelocity = aV;
                 _attitudeMatrix =
                 GLKMatrix4Make(a.m11, a.m21, a.m31, 0.0f,
                                a.m13, a.m23, a.m33, 0.0f,
@@ -175,13 +181,16 @@
 }
 
 -(void)logOrientation{
-    NSLog(@"\n%.3f, %.3f, %.3f\n%.3f, %.3f, %.3f\n%.3f, %.3f, %.3f\n+++++++++++++++++++++\n%.3f, %.3f, %.3f\n%.3f, %.3f, %.3f\n%.3f, %.3f, %.3f",
+    NSLog(@"\n%.3f, %.3f, %.3f\n%.3f, %.3f, %.3f\n%.3f, %.3f, %.3f\n+++++++++++++++++++++\n%.3f, %.3f, %.3f\n%.3f, %.3f, %.3f\n%.3f, %.3f, %.3f\n#####################\n%.3f, %.3f, %.3f\n%.3f, %.3f, %.3f\n%.3f, %.3f, %.3f",
           _attitudeMatrix.m00, _attitudeMatrix.m01, _attitudeMatrix.m02,
           _attitudeMatrix.m10, _attitudeMatrix.m11, _attitudeMatrix.m12,
           _attitudeMatrix.m20, _attitudeMatrix.m21, _attitudeMatrix.m22,
           _attitudeVelocity.m00, _attitudeVelocity.m01, _attitudeVelocity.m02,
           _attitudeVelocity.m10, _attitudeVelocity.m11, _attitudeVelocity.m12,
-          _attitudeVelocity.m20, _attitudeVelocity.m21, _attitudeVelocity.m22);
+          _attitudeVelocity.m20, _attitudeVelocity.m21, _attitudeVelocity.m22,
+          _attitudeAcceleration.m00, _attitudeAcceleration.m01, _attitudeAcceleration.m02,
+          _attitudeAcceleration.m10, _attitudeAcceleration.m11, _attitudeAcceleration.m12,
+          _attitudeAcceleration.m20, _attitudeAcceleration.m21, _attitudeAcceleration.m22);
 }
 
 - (void)tearDownGL{
