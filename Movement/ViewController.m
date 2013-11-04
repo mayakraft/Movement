@@ -22,10 +22,16 @@
     GLKMatrix4 _attitudeVelocity;
     GLKMatrix4 _attitudeAcceleration;
     
+    NSMutableArray *positionArray;
+    NSMutableArray *velocityArray;
+    NSMutableArray *accelerationArray;
+    
     //recording
     GLfloat backgroundColor;
     BOOL recordMode;
+    int recordIndex;
     NSTimer *recordTimer;
+    int count;
 }
 @property (strong, nonatomic) EAGLContext *context;
 @property (strong, nonatomic) GLKBaseEffect *effect;
@@ -62,16 +68,55 @@
 
 -(void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event{
     backgroundColor = 0.0;
-    if(![recordTimer isValid]){
-        recordMode = YES;
-        recordTimer = [NSTimer scheduledTimerWithTimeInterval:RECORD_LENGTH target:self selector:@selector(endRecording) userInfo:Nil repeats:NO];
-    }
+    if(![recordTimer isValid])
+        [self beginRecording];
+}
+
+-(void)beginRecording{
+    recordMode = YES;
+    recordIndex = 0;
+    positionArray = [NSMutableArray array];
+    velocityArray = [NSMutableArray array];
+    accelerationArray = [NSMutableArray array];
+    recordTimer = [NSTimer scheduledTimerWithTimeInterval:RECORD_LENGTH target:self selector:@selector(endRecording) userInfo:Nil repeats:NO];
 }
 
 -(void)endRecording{
     recordMode = NO;
     NSLog(@"recordingDone");
     [recordTimer invalidate];
+}
+
+-(void)captureAttitudes{
+    [positionArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m00]];
+    [positionArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m01]];
+    [positionArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m02]];
+    [positionArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m10]];
+    [positionArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m11]];
+    [positionArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m12]];
+    [positionArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m20]];
+    [positionArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m21]];
+    [positionArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m22]];
+
+    [velocityArray addObject:[NSNumber numberWithFloat:_attitudeVelocity.m00]];
+    [velocityArray addObject:[NSNumber numberWithFloat:_attitudeVelocity.m01]];
+    [velocityArray addObject:[NSNumber numberWithFloat:_attitudeVelocity.m02]];
+    [velocityArray addObject:[NSNumber numberWithFloat:_attitudeVelocity.m10]];
+    [velocityArray addObject:[NSNumber numberWithFloat:_attitudeVelocity.m11]];
+    [velocityArray addObject:[NSNumber numberWithFloat:_attitudeVelocity.m12]];
+    [velocityArray addObject:[NSNumber numberWithFloat:_attitudeVelocity.m20]];
+    [velocityArray addObject:[NSNumber numberWithFloat:_attitudeVelocity.m21]];
+    [velocityArray addObject:[NSNumber numberWithFloat:_attitudeVelocity.m22]];
+
+    [accelerationArray addObject:[NSNumber numberWithFloat:_attitudeAcceleration.m00]];
+    [accelerationArray addObject:[NSNumber numberWithFloat:_attitudeAcceleration.m01]];
+    [accelerationArray addObject:[NSNumber numberWithFloat:_attitudeAcceleration.m02]];
+    [accelerationArray addObject:[NSNumber numberWithFloat:_attitudeAcceleration.m10]];
+    [accelerationArray addObject:[NSNumber numberWithFloat:_attitudeAcceleration.m11]];
+    [accelerationArray addObject:[NSNumber numberWithFloat:_attitudeAcceleration.m12]];
+    [accelerationArray addObject:[NSNumber numberWithFloat:_attitudeAcceleration.m20]];
+    [accelerationArray addObject:[NSNumber numberWithFloat:_attitudeAcceleration.m21]];
+    [accelerationArray addObject:[NSNumber numberWithFloat:_attitudeAcceleration.m22]];
 }
 
 -(void)initGL{
@@ -83,7 +128,6 @@
     _aspectRatio = (float)[[UIScreen mainScreen] bounds].size.width / (float)[[UIScreen mainScreen] bounds].size.height;
     if([UIApplication sharedApplication].statusBarOrientation > 2)
         _aspectRatio = 1/_aspectRatio;
-//    celestialSphere = [[Sphere alloc] init:15 slices:15 radius:10.0 squash:1.0 textureFile:nil];
     
     // init lighting
     glShadeModel(GL_SMOOTH);
@@ -99,7 +143,6 @@
     glMatrixMode(GL_MODELVIEW);
     glEnable(GL_DEPTH_TEST);
     glLoadIdentity();
-
 }
 
 -(void)enterOrthographic{
@@ -124,8 +167,8 @@
     if(orientToDevice){
         if(motionManager.isDeviceMotionAvailable){
             [motionManager startDeviceMotionUpdatesToQueue:[NSOperationQueue currentQueue] withHandler: ^(CMDeviceMotion *deviceMotion, NSError *error){
-                if(recordMode){
                     CMRotationMatrix a = deviceMotion.attitude.rotationMatrix;
+                if(recordMode){
                     GLKMatrix4 aV =
                     GLKMatrix4Make(a.m11-_attitudeMatrix.m00, a.m21-_attitudeMatrix.m01, a.m31-_attitudeMatrix.m02, 0.0f,
                                    a.m13-_attitudeMatrix.m10, a.m23-_attitudeMatrix.m11, a.m33-_attitudeMatrix.m12, 0.0f,
@@ -142,11 +185,12 @@
                                    a.m13, a.m23, a.m33, 0.0f,
                                    -a.m12,-a.m22,-a.m32,0.0f,
                                    0.0f , 0.0f , 0.0f , 1.0f);
-//                    static int count;
-//                    if(count%20==0)
-//                        [self logOrientation];
-//                    count++;
+                    if(count%20==0){
+                        [self logOrientation];
+                        [self captureAttitudes];
+                    }
                 }
+                count++;
             }];
         }
     }
@@ -156,7 +200,56 @@
 }
 
 -(void)draw3DGraphs{
+    static const GLfloat XAxis[] = {-1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f};
+    static const GLfloat YAxis[] = {0.0f, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f};
+    static const GLfloat ZAxis[] = {0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 1.0f};
 
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Set background color to black and opaque
+    glClear(GL_COLOR_BUFFER_BIT);         // Clear the color buffer (background)
+    
+    glPushMatrix();
+//    glMatrixMode(GL_MODELVIEW);
+    
+    GLfloat vertices[] = {-1, -1, 0, //bottom left corner
+        -1,  1, 0, //top left corner
+        1,  1, 0, //top right corner
+        1, -1, 0}; // bottom right rocner
+    
+    GLubyte indices[] = {0,1,2, // first triangle (bottom left - top left - top right)
+        0,2,3}; // second triangle (bottom left - top right - bottom right)
+
+    glTranslatef(0.0, 0.0, -2.0);
+
+    bool isInvertible;
+    GLKMatrix4 inverse = GLKMatrix4Invert(_attitudeMatrix, &isInvertible);
+
+    glRotatef(10.0, 1.0, 0.0, 0.0);
+    glRotatef(count/5.0, 0.0, 1.0, 0.0);
+    
+//    glDisable(GL_TEXTURE_2D);
+//    glDisable(GL_BLEND);
+    glLineWidth(1.0);
+//    glTranslatef([[UIScreen mainScreen] bounds].size.height*.5, [[UIScreen mainScreen] bounds].size.width*.5, 0.0);
+//    glScalef(100/_aspectRatio, 100*_aspectRatio, 1);
+//    glTranslatef(0.0, 0.0, 2.0);
+
+//    glVertexPointer(3, GL_FLOAT, 0, vertices);
+//    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_BYTE, indices);
+
+    glColor4f(0.5, 0.5, 1.0, 1.0);
+    glVertexPointer(3, GL_FLOAT, 0, XAxis);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glDrawArrays(GL_LINE_LOOP, 0, 2);
+
+    glVertexPointer(3, GL_FLOAT, 0, YAxis);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glDrawArrays(GL_LINE_LOOP, 0, 2);
+ 
+    glVertexPointer(3, GL_FLOAT, 0, ZAxis);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glDrawArrays(GL_LINE_LOOP, 0, 2);
+
+    glPopMatrix();
 
 }
 
@@ -202,20 +295,17 @@
     glClearColor(backgroundColor, backgroundColor, backgroundColor, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     GLfloat white[] = {1.0,1.0,1.0,1.0};
-//    GLfloat black[] = {0.0,0.0,0.0,0.0};
     glMatrixMode(GL_MODELVIEW);
-//    glPushMatrix();
-//    glMultMatrixf(_attitudeMatrix.m);
     glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, white);
-//    [self executeSphere:celestialSphere inverted:YES];
-//    glPushMatrix();
-//    [self executeSphere:[bug sphere] inverted:NO];
-//    glPopMatrix();
-//    glPopMatrix();
+
     if(recordMode){
+//        [self captureAttitudes];
         [self enterOrthographic];
         [self drawHexagons];
         [self exitOrthographic];
+    }
+    else{
+        [self draw3DGraphs];
     }
 }
 
