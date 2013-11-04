@@ -9,6 +9,8 @@
 #import "ViewController.h"
 #import <CoreMotion/CoreMotion.h>
 
+#define RECORD_LENGTH 3.0f
+
 @interface ViewController () {
 
     GLfloat _fieldOfView;
@@ -19,6 +21,11 @@
     GLKMatrix4 _attitudeMatrix;
     GLKMatrix4 _attitudeVelocity;
     GLKMatrix4 _attitudeAcceleration;
+    
+    //recording
+    GLfloat backgroundColor;
+    BOOL recordMode;
+    NSTimer *recordTimer;
 }
 @property (strong, nonatomic) EAGLContext *context;
 @property (strong, nonatomic) GLKBaseEffect *effect;
@@ -45,6 +52,26 @@
     view.context = self.context;
     view.drawableDepthFormat = GLKViewDrawableDepthFormat24;
     view.opaque = NO;  //why?
+    
+    backgroundColor = 0.0;
+}
+
+-(void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event{
+    backgroundColor = 1.0;
+}
+
+-(void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event{
+    backgroundColor = 0.0;
+    if(![recordTimer isValid]){
+        recordMode = YES;
+        recordTimer = [NSTimer scheduledTimerWithTimeInterval:RECORD_LENGTH target:self selector:@selector(endRecording) userInfo:Nil repeats:NO];
+    }
+}
+
+-(void)endRecording{
+    recordMode = NO;
+    NSLog(@"recordingDone");
+    [recordTimer invalidate];
 }
 
 -(void)initGL{
@@ -72,8 +99,9 @@
     glMatrixMode(GL_MODELVIEW);
     glEnable(GL_DEPTH_TEST);
     glLoadIdentity();
-    [self enterOrthographic];
+
 }
+
 -(void)enterOrthographic{
     glDisable(GL_DEPTH_TEST);
     glMatrixMode(GL_PROJECTION);
@@ -83,6 +111,7 @@
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 }
+
 -(void)exitOrthographic{
     glEnable(GL_DEPTH_TEST);
     glMatrixMode(GL_PROJECTION);
@@ -95,27 +124,29 @@
     if(orientToDevice){
         if(motionManager.isDeviceMotionAvailable){
             [motionManager startDeviceMotionUpdatesToQueue:[NSOperationQueue currentQueue] withHandler: ^(CMDeviceMotion *deviceMotion, NSError *error){
-                CMRotationMatrix a = deviceMotion.attitude.rotationMatrix;
-                GLKMatrix4 aV =
-                GLKMatrix4Make(a.m11-_attitudeMatrix.m00, a.m21-_attitudeMatrix.m01, a.m31-_attitudeMatrix.m02, 0.0f,
-                               a.m13-_attitudeMatrix.m10, a.m23-_attitudeMatrix.m11, a.m33-_attitudeMatrix.m12, 0.0f,
-                               -a.m12-_attitudeMatrix.m20,-a.m22-_attitudeMatrix.m21,-a.m32-_attitudeMatrix.m22,0.0f,
-                               0.0f , 0.0f , 0.0f , 1.0f);
-                _attitudeAcceleration =
-                GLKMatrix4Make(aV.m00-_attitudeVelocity.m00, aV.m01-_attitudeVelocity.m01, aV.m02-_attitudeVelocity.m02, 0.0f,
-                               aV.m10-_attitudeVelocity.m10, aV.m11-_attitudeVelocity.m11, aV.m12-_attitudeVelocity.m12, 0.0f,
-                               aV.m20-_attitudeVelocity.m20, aV.m21-_attitudeVelocity.m21, aV.m22-_attitudeVelocity.m22, 0.0f,
-                               0.0f , 0.0f , 0.0f , 1.0f);
-                _attitudeVelocity = aV;
-                _attitudeMatrix =
-                GLKMatrix4Make(a.m11, a.m21, a.m31, 0.0f,
-                               a.m13, a.m23, a.m33, 0.0f,
-                               -a.m12,-a.m22,-a.m32,0.0f,
-                               0.0f , 0.0f , 0.0f , 1.0f);
-                static int count;
-                if(count%20==0)
-                    [self logOrientation];
-                count++;
+                if(recordMode){
+                    CMRotationMatrix a = deviceMotion.attitude.rotationMatrix;
+                    GLKMatrix4 aV =
+                    GLKMatrix4Make(a.m11-_attitudeMatrix.m00, a.m21-_attitudeMatrix.m01, a.m31-_attitudeMatrix.m02, 0.0f,
+                                   a.m13-_attitudeMatrix.m10, a.m23-_attitudeMatrix.m11, a.m33-_attitudeMatrix.m12, 0.0f,
+                                   -a.m12-_attitudeMatrix.m20,-a.m22-_attitudeMatrix.m21,-a.m32-_attitudeMatrix.m22,0.0f,
+                                   0.0f , 0.0f , 0.0f , 1.0f);
+                    _attitudeAcceleration =
+                    GLKMatrix4Make(aV.m00-_attitudeVelocity.m00, aV.m01-_attitudeVelocity.m01, aV.m02-_attitudeVelocity.m02, 0.0f,
+                                   aV.m10-_attitudeVelocity.m10, aV.m11-_attitudeVelocity.m11, aV.m12-_attitudeVelocity.m12, 0.0f,
+                                   aV.m20-_attitudeVelocity.m20, aV.m21-_attitudeVelocity.m21, aV.m22-_attitudeVelocity.m22, 0.0f,
+                                   0.0f , 0.0f , 0.0f , 1.0f);
+                    _attitudeVelocity = aV;
+                    _attitudeMatrix =
+                    GLKMatrix4Make(a.m11, a.m21, a.m31, 0.0f,
+                                   a.m13, a.m23, a.m33, 0.0f,
+                                   -a.m12,-a.m22,-a.m32,0.0f,
+                                   0.0f , 0.0f , 0.0f , 1.0f);
+//                    static int count;
+//                    if(count%20==0)
+//                        [self logOrientation];
+//                    count++;
+                }
             }];
         }
     }
@@ -124,7 +155,12 @@
     }
 }
 
--(void)drawShapes
+-(void)draw3DGraphs{
+
+
+}
+
+-(void)drawHexagons
 {
     static const GLfloat hexVertices[] = {
         -.5f, -.8660254f, -1.0f, 0.0f, -.5f, .8660254f,
@@ -137,18 +173,18 @@
     glTranslatef([[UIScreen mainScreen] bounds].size.height*.5, [[UIScreen mainScreen] bounds].size.width*.5, 0.0);
     glScalef(100/_aspectRatio, 100*_aspectRatio, 1);
     
-    glColor4f(0.5, 0.5, 1.0, 1.0); // blue
+    glColor4f(0.5, 0.5, 1.0, 1.0);
     glVertexPointer(2, GL_FLOAT, 0, hexVertices);
     glEnableClientState(GL_VERTEX_ARRAY);
     glDrawArrays(GL_LINE_LOOP, 0, 6);
     
-    glColor4f(0.5, 0.5, 1.0, 1.0); // blue
+    glColor4f(0.5, 0.5, 1.0, 1.0);
     glScalef(1.175, 1.175, 1);
     glRotatef(-atan2f(_attitudeMatrix.m10, _attitudeMatrix.m11)*180/M_PI, 0, 0, 1);
     glDrawArrays(GL_LINE_LOOP, 0, 6);
 
     glLoadIdentity();
-    glColor4f(0.5, 0.5, 1.0, 1.0); // blue
+    glColor4f(0.5, 0.5, 1.0, 1.0);
     glTranslatef([[UIScreen mainScreen] bounds].size.height*.5, [[UIScreen mainScreen] bounds].size.width*.5, 0.0);
     glScalef(100/_aspectRatio/1.175, 100*_aspectRatio/1.175, 1);
     glRotatef(-atan2f(_attitudeMatrix.m00, _attitudeMatrix.m01)*180/M_PI, 0, 0, 1);
@@ -163,21 +199,24 @@
 #pragma mark - GLKView and GLKViewController delegate methods
 
 - (void)glkView:(GLKView *)view drawInRect:(CGRect)rect{
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClearColor(backgroundColor, backgroundColor, backgroundColor, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     GLfloat white[] = {1.0,1.0,1.0,1.0};
 //    GLfloat black[] = {0.0,0.0,0.0,0.0};
     glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
+//    glPushMatrix();
 //    glMultMatrixf(_attitudeMatrix.m);
     glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, white);
 //    [self executeSphere:celestialSphere inverted:YES];
-    glPushMatrix();
-    glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, white);
+//    glPushMatrix();
 //    [self executeSphere:[bug sphere] inverted:NO];
 //    glPopMatrix();
 //    glPopMatrix();
-    [self drawShapes];
+    if(recordMode){
+        [self enterOrthographic];
+        [self drawHexagons];
+        [self exitOrthographic];
+    }
 }
 
 -(void)logOrientation{
