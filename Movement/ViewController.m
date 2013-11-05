@@ -144,9 +144,8 @@
     static const GLfloat YAxis[] = {0.0f, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f};
     static const GLfloat ZAxis[] = {0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 1.0f};
     //                   bottom left   top left   top right   bottom right
-    GLfloat vertices[] = {-1, -1, 0,   -1, 1, 0,   1, 1, 0,   1, -1, 0};
-//    GLfloat vertices[] = {0, -1, -1,   0, -1, 1,   0, 1, 1,   0, 1, -1};
-    GLubyte indices[] = {0,1,2,  0,2,3};
+//    GLfloat vertices[] = {-1, -1, 0,   -1, 1, 0,   1, 1, 0,   1, -1, 0};
+//    GLubyte indices[] = {0,1,2,  0,2,3};
     
     glPushMatrix();
     
