@@ -20,10 +20,12 @@
     GLKMatrix4 _attitudeMatrix;
     GLKVector3 _rotationRate;
     GLKVector3 _userAcceleration;
+    GLKVector3 _attitudeQuaternion;
     
     NSMutableArray *attitudeMatrixArray;
     NSMutableArray *rotationRateArray;
     NSMutableArray *userAccelerationArray;
+    NSMutableArray *attitudeQuaternionArray;
     
     //recording
     GLfloat backgroundColor;
@@ -70,6 +72,7 @@
     attitudeMatrixArray = [NSMutableArray array];
     rotationRateArray = [NSMutableArray array];
     userAccelerationArray = [NSMutableArray array];
+    attitudeQuaternionArray = [NSMutableArray array];
     recordTimer = [NSTimer scheduledTimerWithTimeInterval:RECORD_LENGTH target:self selector:@selector(endRecording) userInfo:Nil repeats:NO];
 }
 
@@ -77,6 +80,12 @@
     NSLog(@"end recording");
     recordMode = NO;
     [recordTimer invalidate];
+}
+
+-(void)recordAttitudeQuaternion:(CMQuaternion) q{
+    [attitudeQuaternionArray addObject:[NSNumber numberWithFloat:q.x]];
+    [attitudeQuaternionArray addObject:[NSNumber numberWithFloat:q.y]];
+    [attitudeQuaternionArray addObject:[NSNumber numberWithFloat:q.z]];
 }
 
 -(void)recordUserAcceleration:(CMAcceleration) a{
@@ -111,19 +120,22 @@
                 if(recordMode){
                     CMAcceleration a = deviceMotion.userAcceleration;
                     CMRotationRate r = deviceMotion.rotationRate;
+                    CMQuaternion q = deviceMotion.attitude.quaternion;
                     CMRotationMatrix m = deviceMotion.attitude.rotationMatrix;
                     _userAcceleration = GLKVector3Make(a.x, a.y, a.z);
                     _rotationRate = GLKVector3Make(r.x, r.y, r.z);
+                    _attitudeQuaternion = GLKVector3Make(q.x, q.y, q.z);
                     _attitudeMatrix= GLKMatrix4Make(m.m11, m.m21, m.m31, 0.0f,
                                                     m.m12, m.m22, m.m32, 0.0f,
                                                     m.m13, m.m23, m.m33, 0.0f,
                                                     0.0f , 0.0f , 0.0f , 1.0f);
                     //if(count%5==0){
-                     //   [self recordAttitudeMatrix];
-                        [self recordRotationRate:r];
-                        [self recordUserAcceleration:a];
-                        recordIndex++;
-                   // }
+                    //   [self recordAttitudeMatrix];
+                    [self recordRotationRate:r];
+                    [self recordUserAcceleration:a];
+                    [self recordAttitudeQuaternion:q];
+                    recordIndex++;
+                    // }
                     if(count%30 == 0){
                         [self logOrientation];
                     }
@@ -171,7 +183,8 @@
     glPushMatrix();
     
     glLineWidth(1.0);
-    glColor4f(0.0, 0.0, 0.0, 1.0);
+    
+    // Rotation Rate
     for(int i = 0; i < recordIndex; i++){
         glColor4f(0.0, 0.0+i/(float)recordIndex, 1.0-i/(float)recordIndex, 1.0);
         GLfloat rotationVector[] = {0.0f, 0.0f, 0.0f, [rotationRateArray[3*i] floatValue], [rotationRateArray[3*i+1] floatValue], [rotationRateArray[3*i+2] floatValue]};
@@ -179,7 +192,8 @@
         glEnableClientState(GL_VERTEX_ARRAY);
         glDrawArrays(GL_LINE_LOOP, 0, 2);
     }
-    glColor4f(1.0, 0.0, 0.0, 1.0);
+    
+    // Device Acceleration
     for(int i = 0; i < recordIndex; i++){
         glColor4f(1.0, 0.0+i/(float)recordIndex, 0.0, 1.0);
         GLfloat userAccelerationVector[] = {0.0f, 0.0f, 0.0f, [userAccelerationArray[3*i] floatValue], [userAccelerationArray[3*i+1] floatValue], [userAccelerationArray[3*i+2] floatValue]};
@@ -188,7 +202,16 @@
         glDrawArrays(GL_LINE_LOOP, 0, 2);
     }
     
-//    //attitude planes
+    // Quaternion Orientation
+    for(int i = 0; i < recordIndex; i++){
+        glColor4f(0.25+i/(float)recordIndex*.75, 0.25+i/(float)recordIndex*.75, 0.25+i/(float)recordIndex*.75, 1.0);
+        GLfloat quaternionVector[] = {0.0f, 0.0f, 0.0f, [attitudeQuaternionArray[3*i] floatValue], [attitudeQuaternionArray[3*i+1] floatValue], [attitudeQuaternionArray[3*i+2] floatValue]};
+        glVertexPointer(3, GL_FLOAT, 0, quaternionVector);
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glDrawArrays(GL_LINE_LOOP, 0, 2);
+    }
+
+//    // Attitude Planes
 //    glColor4f(1.0, 1.0, 1.0, 0.1);
 //    for(int i = 0; i < recordIndex; i++){
 //        glPushMatrix();
