@@ -9,7 +9,7 @@
 #import "ViewController.h"
 #import <CoreMotion/CoreMotion.h>
 
-#define RECORD_LENGTH 3.0f
+#define RECORD_LENGTH 3.0f // seconds
 
 @interface ViewController () {
     GLfloat _fieldOfView;
