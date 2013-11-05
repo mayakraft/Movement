@@ -50,14 +50,12 @@
 
     motionManager = [[CMMotionManager alloc] init];
     motionManager.deviceMotionUpdateInterval = 1.0/45.0; // this will exhaust the battery!
+
     [self setOrientToDevice:YES];
-   
     [self initGL];
 
     GLKView *view = (GLKView *)self.view;
     view.context = self.context;
-    view.drawableDepthFormat = GLKViewDrawableDepthFormat24;
-//    view.opaque = NO;  //why?
     
     backgroundColor = 0.0;
 }
@@ -130,16 +128,10 @@
     if([UIApplication sharedApplication].statusBarOrientation > 2)
         _aspectRatio = 1/_aspectRatio;
     
-    // init lighting
-//    glShadeModel(GL_SMOOTH);
-//    glLightModelf(GL_LIGHT_MODEL_TWO_SIDE,0.0);
-//    glEnable(GL_LIGHTING);
-    
     glEnable(GL_BLEND);
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_TEXTURE_2D);
-//    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
     glEnableClientState(GL_VERTEX_ARRAY);
     glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 
@@ -155,8 +147,6 @@
     glMatrixMode(GL_MODELVIEW);
     glEnable(GL_DEPTH_TEST);
     glLoadIdentity();
-    
-//    glEnable(GL_BLEND);
 }
 
 -(void)enterOrthographic{
@@ -327,7 +317,7 @@
 - (void)glkView:(GLKView *)view drawInRect:(CGRect)rect{
     glClearColor(backgroundColor, backgroundColor, backgroundColor, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    GLfloat white[] = {1.0,1.0,1.0,1.0};
+//    GLfloat white[] = {1.0,1.0,1.0,1.0};
     glMatrixMode(GL_MODELVIEW);
 //    glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, white);
 
