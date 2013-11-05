@@ -57,7 +57,7 @@
     GLKView *view = (GLKView *)self.view;
     view.context = self.context;
     view.drawableDepthFormat = GLKViewDrawableDepthFormat24;
-    view.opaque = NO;  //why?
+//    view.opaque = NO;  //why?
     
     backgroundColor = 0.0;
 }
@@ -117,6 +117,7 @@
     [accelerationArray addObject:[NSNumber numberWithFloat:_attitudeAcceleration.m20]];
     [accelerationArray addObject:[NSNumber numberWithFloat:_attitudeAcceleration.m21]];
     [accelerationArray addObject:[NSNumber numberWithFloat:_attitudeAcceleration.m22]];
+    recordIndex++;
 }
 
 -(void)initGL{
@@ -130,9 +131,20 @@
         _aspectRatio = 1/_aspectRatio;
     
     // init lighting
-    glShadeModel(GL_SMOOTH);
-    glLightModelf(GL_LIGHT_MODEL_TWO_SIDE,0.0);
-    glEnable(GL_LIGHTING);
+//    glShadeModel(GL_SMOOTH);
+//    glLightModelf(GL_LIGHT_MODEL_TWO_SIDE,0.0);
+//    glEnable(GL_LIGHTING);
+    
+    glEnable(GL_BLEND);
+
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_TEXTURE_2D);
+//    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+
+    glCullFace(GL_FRONT_AND_BACK);
+    
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     float zNear = 0.01;
@@ -143,6 +155,8 @@
     glMatrixMode(GL_MODELVIEW);
     glEnable(GL_DEPTH_TEST);
     glLoadIdentity();
+    
+//    glEnable(GL_BLEND);
 }
 
 -(void)enterOrthographic{
@@ -185,7 +199,7 @@
                                    a.m13, a.m23, a.m33, 0.0f,
                                    -a.m12,-a.m22,-a.m32,0.0f,
                                    0.0f , 0.0f , 0.0f , 1.0f);
-                    if(count%20==0){
+                    if(count%15==0){
                         [self logOrientation];
                         [self captureAttitudes];
                     }
@@ -219,22 +233,13 @@
         0,2,3}; // second triangle (bottom left - top right - bottom right)
 
     glTranslatef(0.0, 0.0, -2.0);
-
-    bool isInvertible;
-    GLKMatrix4 inverse = GLKMatrix4Invert(_attitudeMatrix, &isInvertible);
-
     glRotatef(10.0, 1.0, 0.0, 0.0);
-    glRotatef(count/5.0, 0.0, 1.0, 0.0);
+    glRotatef(count/2.0, 0.0, 1.0, 0.0);
     
-//    glDisable(GL_TEXTURE_2D);
-//    glDisable(GL_BLEND);
+//    bool isInvertible;
+//    GLKMatrix4 inverse = GLKMatrix4Invert(_attitudeMatrix, &isInvertible);
+    
     glLineWidth(1.0);
-//    glTranslatef([[UIScreen mainScreen] bounds].size.height*.5, [[UIScreen mainScreen] bounds].size.width*.5, 0.0);
-//    glScalef(100/_aspectRatio, 100*_aspectRatio, 1);
-//    glTranslatef(0.0, 0.0, 2.0);
-
-//    glVertexPointer(3, GL_FLOAT, 0, vertices);
-//    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_BYTE, indices);
 
     glColor4f(0.5, 0.5, 1.0, 1.0);
     glVertexPointer(3, GL_FLOAT, 0, XAxis);
@@ -249,8 +254,36 @@
     glEnableClientState(GL_VERTEX_ARRAY);
     glDrawArrays(GL_LINE_LOOP, 0, 2);
 
+    glPushMatrix();
+//    glScalef(0.05, 0.05, 0.05);
+    
+    glColor4f(1.0, 1.0, 1.0, 0.1);
+    
+    for(int i = 0; i < recordIndex; i++){
+        glPushMatrix();
+        glLoadIdentity();
+        glTranslatef(0.0, 0.0, -2.0);
+        glRotatef(10.0, 1.0, 0.0, 0.0);
+        glRotatef(count/2.0, 0.0, 1.0, 0.0);
+        GLKMatrix4 position = GLKMatrix4Make([positionArray[9*i] floatValue], [positionArray[9*i+1] floatValue], [positionArray[9*i+2] floatValue], 0.0,
+                                             [positionArray[9*i+3] floatValue], [positionArray[9*i+4] floatValue], [positionArray[9*i+5] floatValue], 0.0,
+                                             [positionArray[9*i+6] floatValue], [positionArray[9*i+7] floatValue], [positionArray[9*i+8] floatValue], 0.0,
+                                             0.0, 0.0, 0.0, 1.0);
+        glMultMatrixf(position.m);
+//        GLKMatrix4 velocity = GLKMatrix4Make([velocityArray[9*i] floatValue], [velocityArray[9*i+1] floatValue], [velocityArray[9*i+2] floatValue], 0.0,
+//                                             [velocityArray[9*i+3] floatValue], [velocityArray[9*i+4] floatValue], [velocityArray[9*i+5] floatValue], 0.0,
+//                                             [velocityArray[9*i+6] floatValue], [velocityArray[9*i+7] floatValue], [velocityArray[9*i+8] floatValue], 0.0,
+//                                             0.0, 0.0, 0.0, 1.0);
+//        glMultMatrixf(velocity.m);
+        glVertexPointer(3, GL_FLOAT, 0, vertices);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_BYTE, indices);
+        glPopMatrix();
+    }
+//    glVertexPointer(3, GL_FLOAT, 0, vertices);
+//    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_BYTE, indices);
     glPopMatrix();
-
+    
+    glPopMatrix();
 }
 
 -(void)drawHexagons
@@ -260,13 +293,13 @@
         .5f, .8660254f,    1.0f, 0.0f,  .5f, -.8660254f
     };
     
-    glDisable(GL_TEXTURE_2D);
-    glDisable(GL_BLEND);
+//    glDisable(GL_TEXTURE_2D);
+//    glDisable(GL_BLEND);
     glLineWidth(1.0);
     glTranslatef([[UIScreen mainScreen] bounds].size.height*.5, [[UIScreen mainScreen] bounds].size.width*.5, 0.0);
     glScalef(100/_aspectRatio, 100*_aspectRatio, 1);
     
-    glColor4f(0.5, 0.5, 1.0, 1.0);
+    glColor4f(1.0, 0.5, 0.5, 1.0);
     glVertexPointer(2, GL_FLOAT, 0, hexVertices);
     glEnableClientState(GL_VERTEX_ARRAY);
     glDrawArrays(GL_LINE_LOOP, 0, 6);
@@ -277,14 +310,14 @@
     glDrawArrays(GL_LINE_LOOP, 0, 6);
 
     glLoadIdentity();
-    glColor4f(0.5, 0.5, 1.0, 1.0);
+    glColor4f(0.5, 1.0, 0.5, 1.0);
     glTranslatef([[UIScreen mainScreen] bounds].size.height*.5, [[UIScreen mainScreen] bounds].size.width*.5, 0.0);
     glScalef(100/_aspectRatio/1.175, 100*_aspectRatio/1.175, 1);
     glRotatef(-atan2f(_attitudeMatrix.m00, _attitudeMatrix.m01)*180/M_PI, 0, 0, 1);
     glDrawArrays(GL_LINE_LOOP, 0, 6);
 
-    glEnable(GL_TEXTURE_2D);
-    glEnable(GL_BLEND);
+//    glEnable(GL_TEXTURE_2D);
+//    glEnable(GL_BLEND);
     
     glLoadIdentity();
 }
@@ -296,7 +329,7 @@
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     GLfloat white[] = {1.0,1.0,1.0,1.0};
     glMatrixMode(GL_MODELVIEW);
-    glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, white);
+//    glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, white);
 
     if(recordMode){
 //        [self captureAttitudes];
