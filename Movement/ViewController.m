@@ -9,7 +9,7 @@
 #import "ViewController.h"
 #import <CoreMotion/CoreMotion.h>
 
-#define RECORD_LENGTH 3.0f // seconds
+#define RECORD_LENGTH 1.0f // seconds
 
 @interface ViewController () {
     GLfloat _fieldOfView;
@@ -18,12 +18,12 @@
     CMMotionManager *motionManager;
 
     GLKMatrix4 _attitudeMatrix;
-    GLKMatrix4 _attitudeVelocity;
-    GLKMatrix4 _attitudeAcceleration;
+    GLKVector3 _rotationRate;
+    GLKVector3 _userAcceleration;
     
-    NSMutableArray *positionArray;
-    NSMutableArray *velocityArray;
-    NSMutableArray *accelerationArray;
+    NSMutableArray *attitudeMatrixArray;
+    NSMutableArray *rotationRateArray;
+    NSMutableArray *userAccelerationArray;
     
     //recording
     GLfloat backgroundColor;
@@ -67,9 +67,9 @@
     NSLog(@"begin recording");
     recordMode = YES;
     recordIndex = 0;
-    positionArray = [NSMutableArray array];
-    velocityArray = [NSMutableArray array];
-    accelerationArray = [NSMutableArray array];
+    attitudeMatrixArray = [NSMutableArray array];
+    rotationRateArray = [NSMutableArray array];
+    userAccelerationArray = [NSMutableArray array];
     recordTimer = [NSTimer scheduledTimerWithTimeInterval:RECORD_LENGTH target:self selector:@selector(endRecording) userInfo:Nil repeats:NO];
 }
 
@@ -79,37 +79,28 @@
     [recordTimer invalidate];
 }
 
--(void)captureAttitudes{
-    [positionArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m00]];
-    [positionArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m01]];
-    [positionArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m02]];
-    [positionArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m10]];
-    [positionArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m11]];
-    [positionArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m12]];
-    [positionArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m20]];
-    [positionArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m21]];
-    [positionArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m22]];
+-(void)recordUserAcceleration:(CMAcceleration) a{
+    [userAccelerationArray addObject:[NSNumber numberWithFloat:a.x]];
+    [userAccelerationArray addObject:[NSNumber numberWithFloat:a.y]];
+    [userAccelerationArray addObject:[NSNumber numberWithFloat:a.z]];
+}
 
-    [velocityArray addObject:[NSNumber numberWithFloat:_attitudeVelocity.m00]];
-    [velocityArray addObject:[NSNumber numberWithFloat:_attitudeVelocity.m01]];
-    [velocityArray addObject:[NSNumber numberWithFloat:_attitudeVelocity.m02]];
-    [velocityArray addObject:[NSNumber numberWithFloat:_attitudeVelocity.m10]];
-    [velocityArray addObject:[NSNumber numberWithFloat:_attitudeVelocity.m11]];
-    [velocityArray addObject:[NSNumber numberWithFloat:_attitudeVelocity.m12]];
-    [velocityArray addObject:[NSNumber numberWithFloat:_attitudeVelocity.m20]];
-    [velocityArray addObject:[NSNumber numberWithFloat:_attitudeVelocity.m21]];
-    [velocityArray addObject:[NSNumber numberWithFloat:_attitudeVelocity.m22]];
+-(void) recordRotationRate:(CMRotationRate) r{
+    [rotationRateArray addObject:[NSNumber numberWithFloat:r.x]];
+    [rotationRateArray addObject:[NSNumber numberWithFloat:r.y]];
+    [rotationRateArray addObject:[NSNumber numberWithFloat:r.z]];
+}
 
-    [accelerationArray addObject:[NSNumber numberWithFloat:_attitudeAcceleration.m00]];
-    [accelerationArray addObject:[NSNumber numberWithFloat:_attitudeAcceleration.m01]];
-    [accelerationArray addObject:[NSNumber numberWithFloat:_attitudeAcceleration.m02]];
-    [accelerationArray addObject:[NSNumber numberWithFloat:_attitudeAcceleration.m10]];
-    [accelerationArray addObject:[NSNumber numberWithFloat:_attitudeAcceleration.m11]];
-    [accelerationArray addObject:[NSNumber numberWithFloat:_attitudeAcceleration.m12]];
-    [accelerationArray addObject:[NSNumber numberWithFloat:_attitudeAcceleration.m20]];
-    [accelerationArray addObject:[NSNumber numberWithFloat:_attitudeAcceleration.m21]];
-    [accelerationArray addObject:[NSNumber numberWithFloat:_attitudeAcceleration.m22]];
-    recordIndex++;
+-(void)recordAttitudeMatrix{
+    [attitudeMatrixArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m00]];
+    [attitudeMatrixArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m01]];
+    [attitudeMatrixArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m02]];
+    [attitudeMatrixArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m10]];
+    [attitudeMatrixArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m11]];
+    [attitudeMatrixArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m12]];
+    [attitudeMatrixArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m20]];
+    [attitudeMatrixArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m21]];
+    [attitudeMatrixArray addObject:[NSNumber numberWithFloat:_attitudeMatrix.m22]];
 }
 
 -(void) setOrientToDevice:(BOOL)orientToDevice{
@@ -117,28 +108,25 @@
     if(orientToDevice){
         if(motionManager.isDeviceMotionAvailable){
             [motionManager startDeviceMotionUpdatesToQueue:[NSOperationQueue currentQueue] withHandler: ^(CMDeviceMotion *deviceMotion, NSError *error){
-                    CMRotationMatrix a = deviceMotion.attitude.rotationMatrix;
                 if(recordMode){
-                    GLKMatrix4 aV =
-                    GLKMatrix4Make(a.m11-_attitudeMatrix.m00, a.m21-_attitudeMatrix.m01, a.m31-_attitudeMatrix.m02, 0.0f,
-                                   a.m12-_attitudeMatrix.m10, a.m22-_attitudeMatrix.m11, a.m32-_attitudeMatrix.m12, 0.0f,
-                                   a.m13-_attitudeMatrix.m20, a.m23-_attitudeMatrix.m21, a.m33-_attitudeMatrix.m22,0.0f,
-                                   0.0f , 0.0f , 0.0f , 1.0f);
-                    _attitudeAcceleration =
-                    GLKMatrix4Make(aV.m00-_attitudeVelocity.m00, aV.m01-_attitudeVelocity.m01, aV.m02-_attitudeVelocity.m02, 0.0f,
-                                   aV.m10-_attitudeVelocity.m10, aV.m11-_attitudeVelocity.m11, aV.m12-_attitudeVelocity.m12, 0.0f,
-                                   aV.m20-_attitudeVelocity.m20, aV.m21-_attitudeVelocity.m21, aV.m22-_attitudeVelocity.m22, 0.0f,
-                                   0.0f , 0.0f , 0.0f , 1.0f);
-                    _attitudeVelocity = aV;
-                    _attitudeMatrix =
-                    GLKMatrix4Make(a.m11, a.m21, a.m31, 0.0f,
-                                   a.m12, a.m22, a.m32, 0.0f,
-                                   a.m13, a.m23, a.m33, 0.0f,
-                                   0.0f , 0.0f , 0.0f , 1.0f);
-                    if(count%5==0)
-                        [self captureAttitudes];
-                    if(count%30 == 0)
+                    CMAcceleration a = deviceMotion.userAcceleration;
+                    CMRotationRate r = deviceMotion.rotationRate;
+                    CMRotationMatrix m = deviceMotion.attitude.rotationMatrix;
+                    _userAcceleration = GLKVector3Make(a.x, a.y, a.z);
+                    _rotationRate = GLKVector3Make(r.x, r.y, r.z);
+                    _attitudeMatrix= GLKMatrix4Make(m.m11, m.m21, m.m31, 0.0f,
+                                                    m.m12, m.m22, m.m32, 0.0f,
+                                                    m.m13, m.m23, m.m33, 0.0f,
+                                                    0.0f , 0.0f , 0.0f , 1.0f);
+                    //if(count%5==0){
+                     //   [self recordAttitudeMatrix];
+                        [self recordRotationRate:r];
+                        [self recordUserAcceleration:a];
+                        recordIndex++;
+                   // }
+                    if(count%30 == 0){
                         [self logOrientation];
+                    }
                     count++;
                 }
             }];
@@ -157,10 +145,8 @@
     static const GLfloat ZAxis[] = {0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 1.0f};
     //                   bottom left   top left   top right   bottom right
     GLfloat vertices[] = {-1, -1, 0,   -1, 1, 0,   1, 1, 0,   1, -1, 0};
+//    GLfloat vertices[] = {0, -1, -1,   0, -1, 1,   0, 1, 1,   0, 1, -1};
     GLubyte indices[] = {0,1,2,  0,2,3};
-
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Set background color to black and opaque
-    glClear(GL_COLOR_BUFFER_BIT);         // Clear the color buffer (background)
     
     glPushMatrix();
     
@@ -185,23 +171,42 @@
 
     glPushMatrix();
     
-    glColor4f(1.0, 1.0, 1.0, 0.1);
-    
+    glLineWidth(1.0);
+    glColor4f(0.0, 0.0, 0.0, 1.0);
     for(int i = 0; i < recordIndex; i++){
-        glPushMatrix();
-        glLoadIdentity();
-        glTranslatef(0.0, 0.0, -2.0);
-        glRotatef(10.0, 1.0, 0.0, 0.0);
-        glRotatef(screenRotate/2.0, 0.0, 1.0, 0.0);
-        GLKMatrix4 position = GLKMatrix4Make([positionArray[9*i] floatValue], [positionArray[9*i+1] floatValue], [positionArray[9*i+2] floatValue], 0.0,
-                                             [positionArray[9*i+3] floatValue], [positionArray[9*i+4] floatValue], [positionArray[9*i+5] floatValue], 0.0,
-                                             [positionArray[9*i+6] floatValue], [positionArray[9*i+7] floatValue], [positionArray[9*i+8] floatValue], 0.0,
-                                             0.0, 0.0, 0.0, 1.0);
-        glMultMatrixf(position.m);
-        glVertexPointer(3, GL_FLOAT, 0, vertices);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_BYTE, indices);
-        glPopMatrix();
+        glColor4f(0.0, 0.0+i/(float)recordIndex, 1.0-i/(float)recordIndex, 1.0);
+        GLfloat rotationVector[] = {0.0f, 0.0f, 0.0f, [rotationRateArray[3*i] floatValue], [rotationRateArray[3*i+1] floatValue], [rotationRateArray[3*i+2] floatValue]};
+        glVertexPointer(3, GL_FLOAT, 0, rotationVector);
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glDrawArrays(GL_LINE_LOOP, 0, 2);
     }
+    glColor4f(1.0, 0.0, 0.0, 1.0);
+    for(int i = 0; i < recordIndex; i++){
+        glColor4f(1.0, 0.0+i/(float)recordIndex, 0.0, 1.0);
+        GLfloat userAccelerationVector[] = {0.0f, 0.0f, 0.0f, [userAccelerationArray[3*i] floatValue], [userAccelerationArray[3*i+1] floatValue], [userAccelerationArray[3*i+2] floatValue]};
+        glVertexPointer(3, GL_FLOAT, 0, userAccelerationVector);
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glDrawArrays(GL_LINE_LOOP, 0, 2);
+    }
+    
+//    //attitude planes
+//    glColor4f(1.0, 1.0, 1.0, 0.1);
+//    for(int i = 0; i < recordIndex; i++){
+//        glPushMatrix();
+//        glLoadIdentity();
+//        glTranslatef(0.0, 0.0, -2.0);
+//        glRotatef(10.0, 1.0, 0.0, 0.0);
+//        glRotatef(screenRotate/2.0, 0.0, 1.0, 0.0);
+//        GLKMatrix4 position = GLKMatrix4Make(
+//            [attitudeMatrixArray[9*i] floatValue], [attitudeMatrixArray[9*i+1] floatValue], [attitudeMatrixArray[9*i+2] floatValue], 0.0,
+//            [attitudeMatrixArray[9*i+3] floatValue], [attitudeMatrixArray[9*i+4] floatValue], [attitudeMatrixArray[9*i+5] floatValue], 0.0,
+//            [attitudeMatrixArray[9*i+6] floatValue], [attitudeMatrixArray[9*i+7] floatValue], [attitudeMatrixArray[9*i+8] floatValue], 0.0,
+//            0.0, 0.0, 0.0, 1.0);
+//        glMultMatrixf(position.m);
+//        glVertexPointer(3, GL_FLOAT, 0, vertices);
+//        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_BYTE, indices);
+//        glPopMatrix();
+//    }
     glPopMatrix();
     glPopMatrix();
     screenRotate++;
@@ -304,16 +309,11 @@
 }
 
 -(void)logOrientation{
-    NSLog(@"\n%.3f, %.3f, %.3f\n%.3f, %.3f, %.3f\n%.3f, %.3f, %.3f\n+++++++++++++++++++++\n%.3f, %.3f, %.3f\n%.3f, %.3f, %.3f\n%.3f, %.3f, %.3f\n#####################\n%.3f, %.3f, %.3f\n%.3f, %.3f, %.3f\n%.3f, %.3f, %.3f",
-          _attitudeMatrix.m00, _attitudeMatrix.m01, _attitudeMatrix.m02,
-          _attitudeMatrix.m10, _attitudeMatrix.m11, _attitudeMatrix.m12,
-          _attitudeMatrix.m20, _attitudeMatrix.m21, _attitudeMatrix.m22,
-          _attitudeVelocity.m00, _attitudeVelocity.m01, _attitudeVelocity.m02,
-          _attitudeVelocity.m10, _attitudeVelocity.m11, _attitudeVelocity.m12,
-          _attitudeVelocity.m20, _attitudeVelocity.m21, _attitudeVelocity.m22,
-          _attitudeAcceleration.m00, _attitudeAcceleration.m01, _attitudeAcceleration.m02,
-          _attitudeAcceleration.m10, _attitudeAcceleration.m11, _attitudeAcceleration.m12,
-          _attitudeAcceleration.m20, _attitudeAcceleration.m21, _attitudeAcceleration.m22);
+//    NSLog(@"\n%.3f, %.3f, %.3f\n%.3f, %.3f, %.3f\n%.3f, %.3f, %.3f",
+//          _attitudeMatrix.m00, _attitudeMatrix.m01, _attitudeMatrix.m02,
+//          _attitudeMatrix.m10, _attitudeMatrix.m11, _attitudeMatrix.m12,
+//          _attitudeMatrix.m20, _attitudeMatrix.m21, _attitudeMatrix.m22);
+    NSLog(@"(%.4f, %.4f, %.4f) (%.4f, %.4f, %.4f)",_userAcceleration.x, _userAcceleration.y, _userAcceleration.z, _rotationRate.x,_rotationRate.y,_rotationRate.z );
 }
 
 - (void)tearDownGL{
