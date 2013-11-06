@@ -9,7 +9,7 @@
 #import "ViewController.h"
 #import <CoreMotion/CoreMotion.h>
 
-#define RECORD_LENGTH 1.0f // seconds
+#define RECORD_LENGTH 5.0f // seconds
 
 @interface ViewController () {
     GLfloat _fieldOfView;
@@ -26,6 +26,10 @@
     NSMutableArray *rotationRateArray;
     NSMutableArray *userAccelerationArray;
     NSMutableArray *attitudeQuaternionArray;
+    
+    float *rotationRates;
+    float *userAccelerations;
+    float *attitudeQuaternions;
     
     //recording
     GLfloat backgroundColor;
@@ -78,6 +82,21 @@
 
 -(void)endRecording{
     NSLog(@"end recording");
+    
+    free(rotationRates);
+    free(userAccelerations);
+    free(attitudeQuaternions);
+    
+    rotationRates = malloc(sizeof(float)*rotationRateArray.count);
+    userAccelerations = malloc(sizeof(float)*userAccelerationArray.count);
+    attitudeQuaternions = malloc(sizeof(float)*attitudeQuaternionArray.count);
+    for(int i = 0; i < rotationRateArray.count; i++)
+        rotationRates[i] = [rotationRateArray[i] floatValue];
+    for(int i = 0; i < userAccelerationArray.count; i++)
+        userAccelerations[i] = [userAccelerationArray[i] floatValue];
+    for(int i = 0; i < attitudeQuaternionArray.count; i++)
+        attitudeQuaternions[i] = [attitudeQuaternionArray[i] floatValue];
+    
     recordMode = NO;
     [recordTimer invalidate];
 }
@@ -187,7 +206,7 @@
     // Rotation Rate
     for(int i = 0; i < recordIndex; i++){
         glColor4f(0.0, 0.0+i/(float)recordIndex, 1.0-i/(float)recordIndex, 1.0);
-        GLfloat rotationVector[] = {0.0f, 0.0f, 0.0f, [rotationRateArray[3*i] floatValue], [rotationRateArray[3*i+1] floatValue], [rotationRateArray[3*i+2] floatValue]};
+        GLfloat rotationVector[] = {0.0f, 0.0f, 0.0f, rotationRates[3*i], rotationRates[3*i+1], rotationRates[3*i+2]};
         glVertexPointer(3, GL_FLOAT, 0, rotationVector);
         glEnableClientState(GL_VERTEX_ARRAY);
         glDrawArrays(GL_LINE_LOOP, 0, 2);
@@ -196,7 +215,7 @@
     // Device Acceleration
     for(int i = 0; i < recordIndex; i++){
         glColor4f(1.0, 0.0+i/(float)recordIndex, 0.0, 1.0);
-        GLfloat userAccelerationVector[] = {0.0f, 0.0f, 0.0f, [userAccelerationArray[3*i] floatValue], [userAccelerationArray[3*i+1] floatValue], [userAccelerationArray[3*i+2] floatValue]};
+        GLfloat userAccelerationVector[] = {0.0f, 0.0f, 0.0f, userAccelerations[3*i], userAccelerations[3*i+1], userAccelerations[3*i+2]};
         glVertexPointer(3, GL_FLOAT, 0, userAccelerationVector);
         glEnableClientState(GL_VERTEX_ARRAY);
         glDrawArrays(GL_LINE_LOOP, 0, 2);
@@ -205,7 +224,7 @@
     // Quaternion Orientation
     for(int i = 0; i < recordIndex; i++){
         glColor4f(0.25+i/(float)recordIndex*.75, 0.25+i/(float)recordIndex*.75, 0.25+i/(float)recordIndex*.75, 1.0);
-        GLfloat quaternionVector[] = {0.0f, 0.0f, 0.0f, [attitudeQuaternionArray[3*i] floatValue], [attitudeQuaternionArray[3*i+1] floatValue], [attitudeQuaternionArray[3*i+2] floatValue]};
+        GLfloat quaternionVector[] = {0.0f, 0.0f, 0.0f, attitudeQuaternions[3*i], attitudeQuaternions[3*i+1], attitudeQuaternions[3*i+2]};
         glVertexPointer(3, GL_FLOAT, 0, quaternionVector);
         glEnableClientState(GL_VERTEX_ARRAY);
         glDrawArrays(GL_LINE_LOOP, 0, 2);
@@ -351,6 +370,9 @@
     if ([EAGLContext currentContext] == self.context) {
         [EAGLContext setCurrentContext:nil];
     }
+    free(rotationRates);
+    free(userAccelerations);
+    free(attitudeQuaternions);
 }
 - (void)didReceiveMemoryWarning{
     [super didReceiveMemoryWarning];
