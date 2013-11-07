@@ -9,7 +9,7 @@
 #import "ViewController.h"
 #import <CoreMotion/CoreMotion.h>
 
-#define RECORD_LENGTH 5.0f // seconds
+#define RECORD_LENGTH 1.0f // seconds
 
 @interface ViewController () {
     GLfloat _fieldOfView;
@@ -78,6 +78,9 @@
     userAccelerationArray = [NSMutableArray array];
     attitudeQuaternionArray = [NSMutableArray array];
     recordTimer = [NSTimer scheduledTimerWithTimeInterval:RECORD_LENGTH target:self selector:@selector(endRecording) userInfo:Nil repeats:NO];
+    
+    // opengl
+    [self enterOrthographic];
 }
 
 -(void)endRecording{
@@ -87,18 +90,25 @@
     free(userAccelerations);
     free(attitudeQuaternions);
     
-    rotationRates = malloc(sizeof(float)*rotationRateArray.count);
-    userAccelerations = malloc(sizeof(float)*userAccelerationArray.count);
-    attitudeQuaternions = malloc(sizeof(float)*attitudeQuaternionArray.count);
+    rotationRates = malloc(sizeof(float)*(rotationRateArray.count+3));
+    userAccelerations = malloc(sizeof(float)*(userAccelerationArray.count+3));
+    attitudeQuaternions = malloc(sizeof(float)*(attitudeQuaternionArray.count+3));
+    rotationRates[0] = rotationRates[1] = rotationRates[2] = 0.0f;
+    userAccelerations[0] = userAccelerations[1] = userAccelerations[2] = 0.0f;
+    attitudeQuaternions[0] = attitudeQuaternions[1] = attitudeQuaternions[2] = 0.0f;
+
     for(int i = 0; i < rotationRateArray.count; i++)
-        rotationRates[i] = [rotationRateArray[i] floatValue];
+        rotationRates[i+3] = [rotationRateArray[i] floatValue] * .25;
     for(int i = 0; i < userAccelerationArray.count; i++)
-        userAccelerations[i] = [userAccelerationArray[i] floatValue];
+        userAccelerations[i+3] = [userAccelerationArray[i] floatValue];
     for(int i = 0; i < attitudeQuaternionArray.count; i++)
-        attitudeQuaternions[i] = [attitudeQuaternionArray[i] floatValue];
+        attitudeQuaternions[i+3] = [attitudeQuaternionArray[i] floatValue];
     
     recordMode = NO;
     [recordTimer invalidate];
+    
+    // opengl
+    [self exitOrthographic];
 }
 
 -(void)recordAttitudeQuaternion:(CMQuaternion) q{
@@ -148,13 +158,13 @@
                                                     m.m12, m.m22, m.m32, 0.0f,
                                                     m.m13, m.m23, m.m33, 0.0f,
                                                     0.0f , 0.0f , 0.0f , 1.0f);
-                    //if(count%5==0){
+                    if(count%5==0){
                     //   [self recordAttitudeMatrix];
                     [self recordRotationRate:r];
                     [self recordUserAcceleration:a];
                     [self recordAttitudeQuaternion:q];
                     recordIndex++;
-                    // }
+                     }
                     if(count%30 == 0){
                         [self logOrientation];
                     }
@@ -204,6 +214,13 @@
     glLineWidth(1.0);
     
     // Rotation Rate
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glPushMatrix();
+    glColor4f(0.0, 0.0, 1.0, 0.5);
+    glVertexPointer(3, GL_FLOAT, 0, rotationRates);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, recordIndex);
+    glPopMatrix();
+    glDisableClientState(GL_VERTEX_ARRAY);
     for(int i = 0; i < recordIndex; i++){
         glColor4f(0.0, 0.0+i/(float)recordIndex, 1.0-i/(float)recordIndex, 1.0);
         GLfloat rotationVector[] = {0.0f, 0.0f, 0.0f, rotationRates[3*i], rotationRates[3*i+1], rotationRates[3*i+2]};
@@ -213,6 +230,13 @@
     }
     
     // Device Acceleration
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glPushMatrix();
+    glColor4f(1.0, 0.0, 0.0, 0.5);
+    glVertexPointer(3, GL_FLOAT, 0, userAccelerations);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, recordIndex);
+    glPopMatrix();
+    glDisableClientState(GL_VERTEX_ARRAY);
     for(int i = 0; i < recordIndex; i++){
         glColor4f(1.0, 0.0+i/(float)recordIndex, 0.0, 1.0);
         GLfloat userAccelerationVector[] = {0.0f, 0.0f, 0.0f, userAccelerations[3*i], userAccelerations[3*i+1], userAccelerations[3*i+2]};
@@ -248,6 +272,7 @@
 //        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_BYTE, indices);
 //        glPopMatrix();
 //    }
+
     glPopMatrix();
     glPopMatrix();
     screenRotate++;
@@ -258,31 +283,74 @@
         -.5f, -.8660254f, -1.0f, 0.0f, -.5f, .8660254f,
         .5f, .8660254f,    1.0f, 0.0f,  .5f, -.8660254f
     };
+    static const GLfloat hexFan[] = {
+        0.0f, 0.0f,
+        -.5f, -.8660254f,
+        -1.0f, 0.0f,
+        -.5f, .8660254f,
+        .5f, .8660254f,
+        1.0f, 0.0f,
+        .5f, -.8660254f,
+        -.5f, -.8660254f
+    };
     
     glLineWidth(1.0);
     glTranslatef([[UIScreen mainScreen] bounds].size.height*.5, [[UIScreen mainScreen] bounds].size.width*.5, 0.0);
     glScalef(100/_aspectRatio, 100*_aspectRatio, 1);
-    
-    // red
-    glColor4f(1.0, 0.5, 0.5, 1.0);
-    glVertexPointer(2, GL_FLOAT, 0, hexVertices);
+
     glEnableClientState(GL_VERTEX_ARRAY);
-    glDrawArrays(GL_LINE_LOOP, 0, 6);
     
+    glPushMatrix();
+    glColor4f(0.0, 1.0, 0.0, 0.5);
+    glScalef(_attitudeQuaternion.x, _attitudeQuaternion.x, 1);
+    glVertexPointer(2, GL_FLOAT, 0, hexFan);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 8);
+    glPopMatrix();
+    
+    float rot = (_rotationRate.x + _rotationRate.y + _rotationRate.z)/3.0;
+    glPushMatrix();
+    glColor4f(0.0, 0.0, 1.0, 0.5);
+    glScalef(rot, rot, 1);
+    glVertexPointer(2, GL_FLOAT, 0, hexFan);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 8);
+    glPopMatrix();
+
+    float accel = (_userAcceleration.x + _userAcceleration.y + _userAcceleration.z)/3.0;
+    glPushMatrix();
+    glColor4f(1.0, 0.0, 0.0, 0.5);
+    glScalef(accel, accel, 1);
+    glVertexPointer(2, GL_FLOAT, 0, hexFan);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 8);
+    glPopMatrix();
+
+    glDisableClientState(GL_VERTEX_ARRAY);
+
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, hexVertices);
+
     // blue
+    glPushMatrix();
     glColor4f(0.5, 0.5, 1.0, 1.0);
-    glScalef(1.175, 1.175, 1);
-    glRotatef(-atan2f(_attitudeMatrix.m10, _attitudeMatrix.m11)*180/M_PI, 0, 0, 1);
+    glScalef(_attitudeQuaternion.x, _attitudeQuaternion.x, 1);
     glDrawArrays(GL_LINE_LOOP, 0, 6);
+    glPopMatrix();
     
     // green
-    glLoadIdentity();
+    glPushMatrix();
+    glScalef(_attitudeQuaternion.y, _attitudeQuaternion.y, 1);
     glColor4f(0.5, 1.0, 0.5, 1.0);
-    glTranslatef([[UIScreen mainScreen] bounds].size.height*.5, [[UIScreen mainScreen] bounds].size.width*.5, 0.0);
-    glScalef(100/_aspectRatio/1.175, 100*_aspectRatio/1.175, 1);
-    glRotatef(-atan2f(_attitudeMatrix.m00, _attitudeMatrix.m01)*180/M_PI, 0, 0, 1);
     glDrawArrays(GL_LINE_LOOP, 0, 6);
+    glPopMatrix();
     
+    // red
+    glPushMatrix();
+    glColor4f(1.0, 0.5, 0.5, 1.0);
+    glScalef(_attitudeQuaternion.z, _attitudeQuaternion.z, 1);
+    glDrawArrays(GL_LINE_LOOP, 0, 6);
+    glPopMatrix();
+
+    glDisableClientState(GL_VERTEX_ARRAY);
+
     glLoadIdentity();
 }
 
@@ -294,9 +362,7 @@
     glMatrixMode(GL_MODELVIEW);
     
     if(recordMode){
-        [self enterOrthographic];
         [self drawHexagons];
-        [self exitOrthographic];
     }
     else{
         [self draw3DGraphs];
@@ -340,6 +406,8 @@
     glOrthof(0, [[UIScreen mainScreen] bounds].size.height, 0, [[UIScreen mainScreen] bounds].size.width, -5, 1);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 }
 
 -(void)exitOrthographic{
@@ -347,6 +415,8 @@
     glMatrixMode(GL_PROJECTION);
     glPopMatrix();
     glMatrixMode(GL_MODELVIEW);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 -(void)logOrientation{
