@@ -158,7 +158,7 @@
                                                     m.m12, m.m22, m.m32, 0.0f,
                                                     m.m13, m.m23, m.m33, 0.0f,
                                                     0.0f , 0.0f , 0.0f , 1.0f);
-                    if(count%5==0){
+                    if(count%2==0){
                     //   [self recordAttitudeMatrix];
                     [self recordRotationRate:r];
                     [self recordUserAcceleration:a];
