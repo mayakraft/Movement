@@ -27,6 +27,10 @@
     NSMutableArray *userAccelerationArray;
     NSMutableArray *attitudeQuaternionArray;
     
+    //bottom graph data
+    GLfloat *accelMagnitude;
+    GLfloat *rotationMagnitude;
+    
     float *rotationRates;
     float *userAccelerations;
     float *attitudeQuaternions;
@@ -104,6 +108,27 @@
     for(int i = 0; i < attitudeQuaternionArray.count; i++)
         attitudeQuaternions[i+3] = [attitudeQuaternionArray[i] floatValue];
     
+    // bottom graph data
+    accelMagnitude = malloc(sizeof(GLfloat)*(recordIndex*2+1) * 2 );
+    rotationMagnitude = malloc(sizeof(GLfloat)*(recordIndex*2+1) * 2 );
+    [self enterOrthographic];
+    accelMagnitude[0] = accelMagnitude[1] = 0.0f;
+    rotationMagnitude[0] = rotationMagnitude[1] = 0.0f;
+    for (int i = 0; i < recordIndex; i++){
+        // x1
+        accelMagnitude[(i*4)+2] = i/(float)recordIndex;
+        rotationMagnitude[(i*4)+2] = i/(float)recordIndex;
+        // y1
+        accelMagnitude[(i*4)+3] = fabsf(userAccelerations[i*3]) + fabs(userAccelerations[i*3+1]) + fabs(userAccelerations[i*3+2]);
+        rotationMagnitude[(i*4)+3] = -( fabs(rotationRates[i*3]) + fabs(rotationRates[i*3+1]) + fabs(rotationRates[i*3+2]) );
+        // x2
+        accelMagnitude[(i*4)+4] = (i+1)/(float)recordIndex;
+        rotationMagnitude[(i*4)+4] = (i+1)/(float)recordIndex;
+        // y2
+        accelMagnitude[(i*4)+5] = 0.0f;
+        rotationMagnitude[(i*4)+5] = 0.0f;
+    }
+
     recordMode = NO;
     [recordTimer invalidate];
     
@@ -158,17 +183,15 @@
                                                     m.m12, m.m22, m.m32, 0.0f,
                                                     m.m13, m.m23, m.m33, 0.0f,
                                                     0.0f , 0.0f , 0.0f , 1.0f);
-                    if(count%2==0){
                     //   [self recordAttitudeMatrix];
                     [self recordRotationRate:r];
                     [self recordUserAcceleration:a];
                     [self recordAttitudeQuaternion:q];
                     recordIndex++;
-                     }
-                    if(count%30 == 0){
-                        [self logOrientation];
-                    }
-                    count++;
+//                    if(count%30 == 0){
+//                        [self logOrientation];
+//                    }
+//                    count++;
                 }
             }];
         }
@@ -179,7 +202,10 @@
 }
 
 -(void)draw3DGraphs{
+    static int playBack;
     static int screenRotate;
+    
+    if(screenRotate % 2 == 0) playBack++;
     
     static const GLfloat XAxis[] = {-1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f};
     static const GLfloat YAxis[] = {0.0f, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f};
@@ -209,6 +235,7 @@
     glEnableClientState(GL_VERTEX_ARRAY);
     glDrawArrays(GL_LINE_LOOP, 0, 2);
 
+    if(recordIndex){
     glPushMatrix();
     
     glLineWidth(1.0);
@@ -227,6 +254,25 @@
         glVertexPointer(3, GL_FLOAT, 0, rotationVector);
         glEnableClientState(GL_VERTEX_ARRAY);
         glDrawArrays(GL_LINE_LOOP, 0, 2);
+        if(i == playBack % recordIndex && i < recordIndex){
+            GLfloat triangle[9];
+            triangle[0] = rotationRates[0];
+            triangle[1] = rotationRates[1];
+            triangle[2] = rotationRates[2];
+            triangle[3] = rotationRates[i*3];
+            triangle[4] = rotationRates[i*3+1];
+            triangle[5] = rotationRates[i*3+2];
+            triangle[6] = rotationRates[(i+1)*3];
+            triangle[7] = rotationRates[(i+1)*3+1];
+            triangle[8] = rotationRates[(i+1)*3+2];
+            glEnableClientState(GL_VERTEX_ARRAY);
+            glPushMatrix();
+            glColor4f(0.5, 0.5, 1.0, 1.0);
+            glVertexPointer(3, GL_FLOAT, 0, triangle);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+            glPopMatrix();
+            glDisableClientState(GL_VERTEX_ARRAY);
+        }
     }
     
     // Device Acceleration
@@ -243,11 +289,34 @@
         glVertexPointer(3, GL_FLOAT, 0, userAccelerationVector);
         glEnableClientState(GL_VERTEX_ARRAY);
         glDrawArrays(GL_LINE_LOOP, 0, 2);
+        if(i == playBack % recordIndex && i < recordIndex){
+            GLfloat triangle[9];
+            triangle[0] = userAccelerations[0];
+            triangle[1] = userAccelerations[1];
+            triangle[2] = userAccelerations[2];
+            triangle[3] = userAccelerations[i*3];
+            triangle[4] = userAccelerations[i*3+1];
+            triangle[5] = userAccelerations[i*3+2];
+            triangle[6] = userAccelerations[(i+1)*3];
+            triangle[7] = userAccelerations[(i+1)*3+1];
+            triangle[8] = userAccelerations[(i+1)*3+2];
+            glEnableClientState(GL_VERTEX_ARRAY);
+            glPushMatrix();
+            glColor4f(1.0, 0.5, 0.5, 1.0);
+            glVertexPointer(3, GL_FLOAT, 0, triangle);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+            glPopMatrix();
+            glDisableClientState(GL_VERTEX_ARRAY);
+        }
+
     }
     
     // Quaternion Orientation
     for(int i = 0; i < recordIndex; i++){
-        glColor4f(0.25+i/(float)recordIndex*.75, 0.25+i/(float)recordIndex*.75, 0.25+i/(float)recordIndex*.75, 1.0);
+        if(i == playBack % recordIndex)
+            glColor4f(1.0, 1.0, 1.0, 1.0);
+        else
+            glColor4f(0.25+i/(float)recordIndex*.75, 0.25+i/(float)recordIndex*.75, 0.25+i/(float)recordIndex*.75, 1.0);
         GLfloat quaternionVector[] = {0.0f, 0.0f, 0.0f, attitudeQuaternions[3*i], attitudeQuaternions[3*i+1], attitudeQuaternions[3*i+2]};
         glVertexPointer(3, GL_FLOAT, 0, quaternionVector);
         glEnableClientState(GL_VERTEX_ARRAY);
@@ -274,7 +343,53 @@
 //    }
 
     glPopMatrix();
+    }
     glPopMatrix();
+    
+    // bottom graphs
+    CGSize screenSize = [[UIScreen mainScreen] bounds].size;
+
+    if(recordIndex){
+        [self enterOrthographic];
+
+        int i = playBack % (recordIndex);
+        glPushMatrix();
+    
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glScalef(screenSize.width/_aspectRatio, 5, 1);
+        glColor4f(1.0, 0.0, 0.0, 0.5);
+        glVertexPointer(2, GL_FLOAT, 0, accelMagnitude);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, (recordIndex)*2);
+        glDisableClientState(GL_VERTEX_ARRAY);
+
+        glColor4f(1.0, 0.0, 0.0, 1.0);
+        GLfloat timeVector[] = {accelMagnitude[4*i], accelMagnitude[4*i+1], accelMagnitude[4*i+2], accelMagnitude[4*i+3]};
+        glVertexPointer(2, GL_FLOAT, 0, timeVector);
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glDrawArrays(GL_LINE_LOOP, 0, 2);
+        
+        glPopMatrix();
+
+        glPushMatrix();
+        
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glTranslatef(0.0,screenSize.height*_aspectRatio, 0);
+        glScalef(screenSize.width/_aspectRatio, 5, 1);
+        glColor4f(0.0, 0.0, 1.0, 0.5);
+        glVertexPointer(2, GL_FLOAT, 0, rotationMagnitude);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, (recordIndex)*2);
+        glDisableClientState(GL_VERTEX_ARRAY);
+        
+        glColor4f(0.0, 0.0, 1.0, 1.0);
+        GLfloat timeVector2[] = {rotationMagnitude[4*i], rotationMagnitude[4*i+1], rotationMagnitude[4*i+2], rotationMagnitude[4*i+3]};
+        glVertexPointer(2, GL_FLOAT, 0, timeVector2);
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glDrawArrays(GL_LINE_LOOP, 0, 2);
+        
+        glPopMatrix();
+
+        [self exitOrthographic];
+    }
     screenRotate++;
 }
 
@@ -360,12 +475,13 @@
     glClearColor(backgroundColor, backgroundColor, backgroundColor, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glMatrixMode(GL_MODELVIEW);
-    
-    if(recordMode){
-        [self drawHexagons];
-    }
-    else{
-        [self draw3DGraphs];
+    if(!backgroundColor){
+        if(recordMode){
+            [self drawHexagons];
+        }
+        else{
+            [self draw3DGraphs];
+        }
     }
 }
 
