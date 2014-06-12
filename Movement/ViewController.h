@@ -8,7 +8,9 @@
 
 #import <UIKit/UIKit.h>
 #import <GLKit/GLKit.h>
+#import <OpenGLES/ES1/gl.h>
+#import "Motion.h"
 
-@interface ViewController : GLKViewController
+@interface ViewController : GLKViewController <MotionDelegate>
 
 @end

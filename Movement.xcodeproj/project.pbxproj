@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D50E26D5194987E000EF44E1 /* Motion.m in Sources */ = {isa = PBXBuildFile; fileRef = D50E26D4194987E000EF44E1 /* Motion.m */; };
 		D5EC1F0E1824A05B00781817 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D5EC1F0D1824A05B00781817 /* Foundation.framework */; };
 		D5EC1F101824A05B00781817 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D5EC1F0F1824A05B00781817 /* CoreGraphics.framework */; };
 		D5EC1F121824A05B00781817 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D5EC1F111824A05B00781817 /* UIKit.framework */; };
@@ -37,6 +38,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		D50E26D3194987E000EF44E1 /* Motion.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Motion.h; sourceTree = "<group>"; };
+		D50E26D4194987E000EF44E1 /* Motion.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Motion.m; sourceTree = "<group>"; };
 		D5EC1F0A1824A05B00781817 /* Movement.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Movement.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D5EC1F0D1824A05B00781817 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		D5EC1F0F1824A05B00781817 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
@@ -128,6 +131,8 @@
 				D5EC1F261824A05B00781817 /* Main_iPad.storyboard */,
 				D5EC1F2D1824A05B00781817 /* ViewController.h */,
 				D5EC1F2E1824A05B00781817 /* ViewController.m */,
+				D50E26D3194987E000EF44E1 /* Motion.h */,
+				D50E26D4194987E000EF44E1 /* Motion.m */,
 				D5EC1F301824A05B00781817 /* Images.xcassets */,
 				D5EC1F181824A05B00781817 /* Supporting Files */,
 			);
@@ -207,7 +212,7 @@
 		D5EC1F021824A05B00781817 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0500;
+				LastUpgradeCheck = 0600;
 				ORGANIZATIONNAME = "Robby Kraft";
 				TargetAttributes = {
 					D5EC1F351824A05B00781817 = {
@@ -262,6 +267,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D5EC1F2F1824A05B00781817 /* ViewController.m in Sources */,
+				D50E26D5194987E000EF44E1 /* Motion.m in Sources */,
 				D5EC1F221824A05B00781817 /* AppDelegate.m in Sources */,
 				D5EC1F1E1824A05B00781817 /* main.m in Sources */,
 			);
@@ -325,7 +331,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD_INCLUDING_64_BIT)";
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
@@ -365,7 +370,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD_INCLUDING_64_BIT)";
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
@@ -424,7 +428,6 @@
 		D5EC1F4B1824A05B00781817 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD_INCLUDING_64_BIT)";
 				BUNDLE_LOADER = "$(BUILT_PRODUCTS_DIR)/Movement.app/Movement";
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(SDKROOT)/Developer/Library/Frameworks",
@@ -447,7 +450,6 @@
 		D5EC1F4C1824A05B00781817 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD_INCLUDING_64_BIT)";
 				BUNDLE_LOADER = "$(BUILT_PRODUCTS_DIR)/Movement.app/Movement";
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(SDKROOT)/Developer/Library/Frameworks",
@@ -482,6 +484,7 @@
 				D5EC1F491824A05B00781817 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		D5EC1F4A1824A05B00781817 /* Build configuration list for PBXNativeTarget "MovementTests" */ = {
 			isa = XCConfigurationList;
@@ -490,6 +493,7 @@
 				D5EC1F4C1824A05B00781817 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
